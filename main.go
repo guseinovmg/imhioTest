@@ -44,6 +44,7 @@ func main() {
 	}
 
 	e := echo.New()
+	e.Use(middleware.BodyLimit("2M"))
 
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")
