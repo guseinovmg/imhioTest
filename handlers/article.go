@@ -54,7 +54,7 @@ func CreateNewArticle(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
-	return c.JSON(http.StatusOK, "OK")
+	return c.JSON(http.StatusCreated, "OK")
 }
 
 func UpdateArticle(c echo.Context) error {
