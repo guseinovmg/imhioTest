@@ -24,7 +24,7 @@ func GetArticleById(c echo.Context) error {
 	return c.JSON(http.StatusOK, article)
 }
 
-func GetArticleByTag(c echo.Context) error {
+func GetArticlesByTag(c echo.Context) error {
 	tag := c.QueryParam("tag")
 	res, err := db.DB.Query(context.Background(), "SELECT id,content,tags FROM articles WHERE $1=ANY(tags)", tag)
 	if err != nil {
