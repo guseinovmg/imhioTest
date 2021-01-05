@@ -9,7 +9,6 @@ import (
 	"github.com/jackc/pgx/v4/log/log15adapter"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
 	log "gopkg.in/inconshreveable/log15.v2"
 
 	"context"
@@ -57,10 +56,6 @@ func setToken(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func Auth(username, password string, c echo.Context) (bool, error) {
-	return username == "admin" && password == "password", nil
-}
-
 func main() {
 	logger := log15adapter.NewLogger(log.New("module", "pgx"))
 
@@ -79,7 +74,6 @@ func main() {
 	}
 
 	e := echo.New()
-	e.Use(middleware.BodyLimit("2M"))
 
 	e.GET("/", func(c echo.Context) error {
 		return c.String(http.StatusOK, "Hello, World!")
@@ -123,13 +117,7 @@ func main() {
 		return c.JSON(http.StatusOK, rows)
 	}, setToken)
 
-	adminGroup := e.Group("/admin")
-
-	adminGroup.Use(middleware.BasicAuth(Auth))
-
-	adminArticle := adminGroup.Group("/article")
-
-	adminArticle.POST("", func(c echo.Context) error {
+	articleGroup.POST("", func(c echo.Context) error {
 		article := &Article{}
 		if err := c.Bind(article); err != nil {
 			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -141,7 +129,7 @@ func main() {
 		return c.JSON(http.StatusOK, "OK")
 	})
 
-	adminArticle.PUT("/:id", func(c echo.Context) error {
+	articleGroup.PUT("/:id", func(c echo.Context) error {
 		article := &Article{}
 		id := c.Param("id")
 		if err := c.Bind(article); err != nil {
@@ -157,7 +145,7 @@ func main() {
 		return c.JSON(http.StatusOK, "OK")
 	})
 
-	adminArticle.DELETE("/:id", func(c echo.Context) error {
+	articleGroup.DELETE("/:id", func(c echo.Context) error {
 		id := c.Param("id")
 		commandTag, err := db.Exec(context.Background(), "DELETE FROM articles WHERE id=$1", id)
 		if err != nil {
