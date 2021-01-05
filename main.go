@@ -56,7 +56,7 @@ func main() {
 
 	articleGroup.GET("/:id", handlers.GetArticleById)
 
-	articleGroup.GET("/", handlers.GetArticlesByTag, setTokenAndCounter)
+	articleGroup.GET("", handlers.GetArticlesByTag, setTokenAndCounter)
 
 	articleGroup.POST("", handlers.CreateNewArticle)
 
