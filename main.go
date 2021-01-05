@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func setToken(next echo.HandlerFunc) echo.HandlerFunc {
+func setTokenAndCounter(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		cookie, err := c.Cookie("token")
 		if err != nil {
@@ -56,7 +56,7 @@ func main() {
 
 	articleGroup.GET("/:id", handlers.GetArticleById)
 
-	articleGroup.GET("/", handlers.GetArticlesByTag, setToken)
+	articleGroup.GET("/", handlers.GetArticlesByTag, setTokenAndCounter)
 
 	articleGroup.POST("", handlers.CreateNewArticle)
 
