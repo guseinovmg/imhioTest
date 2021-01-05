@@ -4,6 +4,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"os/signal"
+	"strconv"
 
 	"github.com/jackc/pgx/v4/log/log15adapter"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -14,7 +15,6 @@ import (
 	"context"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 )
 
@@ -25,6 +25,41 @@ type Article struct {
 }
 
 var db *pgxpool.Pool
+
+func setToken(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		cookie, err := c.Cookie("token")
+		if err != nil {
+			cookie = new(http.Cookie)
+			cookie.Name = "token"
+			uuidValue := uuid.New()
+			cookie.Value = uuidValue.String()
+			cookie.Expires = time.Now().Add(time.Minute)
+			c.SetCookie(cookie)
+
+			cookie = new(http.Cookie)
+			cookie.Name = "counter"
+			cookie.Value = "1"
+			c.SetCookie(cookie)
+		} else {
+			cookie, err = c.Cookie("counter")
+			if err != nil {
+				return err
+			}
+			num, err := strconv.Atoi(cookie.Value)
+			if err != nil {
+				return err
+			}
+			cookie.Value = strconv.Itoa(num + 1)
+			c.SetCookie(cookie)
+		}
+		return next(c)
+	}
+}
+
+func Auth(username, password string, c echo.Context) (bool, error) {
+	return username == "admin" && password == "password", nil
+}
 
 func main() {
 	logger := log15adapter.NewLogger(log.New("module", "pgx"))
@@ -68,31 +103,6 @@ func main() {
 	})
 
 	articleGroup.GET("/", func(c echo.Context) error {
-		cookie, err := c.Cookie("token")
-		if err != nil {
-			cookie = new(http.Cookie)
-			cookie.Name = "token"
-			uuidValue := uuid.New()
-			cookie.Value = uuidValue.String()
-			cookie.Expires = time.Now().Add(time.Minute)
-			c.SetCookie(cookie)
-
-			cookie = new(http.Cookie)
-			cookie.Name = "counter"
-			cookie.Value = "1"
-			c.SetCookie(cookie)
-		} else {
-			cookie, err = c.Cookie("counter")
-			if err != nil {
-				return err
-			}
-			num, err := strconv.Atoi(cookie.Value)
-			if err != nil {
-				return err
-			}
-			cookie.Value = strconv.Itoa(num + 1)
-			c.SetCookie(cookie)
-		}
 		tag := c.QueryParam("tag")
 		res, err := db.Query(context.Background(), "SELECT id,content,tags FROM articles WHERE $1=ANY(tags)", tag)
 		if err != nil {
@@ -111,13 +121,11 @@ func main() {
 			return echo.NewHTTPError(http.StatusNotFound)
 		}
 		return c.JSON(http.StatusOK, rows)
-	})
+	}, setToken)
 
 	adminGroup := e.Group("/admin")
 
-	adminGroup.Use(middleware.BasicAuth(func(username, password string, c echo.Context) (bool, error) {
-		return username == "admin" && password == "password", nil
-	}))
+	adminGroup.Use(middleware.BasicAuth(Auth))
 
 	adminArticle := adminGroup.Group("/article")
 
