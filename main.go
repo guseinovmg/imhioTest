@@ -2,28 +2,16 @@ package main
 
 import (
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v4"
+	"github.com/guseinovmg/imhioTest/handlers"
 	"os/signal"
 	"strconv"
 
-	"github.com/jackc/pgx/v4/log/log15adapter"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/labstack/echo/v4"
-	log "gopkg.in/inconshreveable/log15.v2"
-
 	"context"
+	"github.com/labstack/echo/v4"
 	"net/http"
 	"os"
 	"time"
 )
-
-type Article struct {
-	Id      int64    `json:"id"`
-	Content string   `json:"content"`
-	Tags    []string `json:"tags"`
-}
-
-var db *pgxpool.Pool
 
 func setToken(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
@@ -57,21 +45,6 @@ func setToken(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 func main() {
-	logger := log15adapter.NewLogger(log.New("module", "pgx"))
-
-	poolConfig, err := pgxpool.ParseConfig(`postgresql://postgres:password@localhost:5432/articles`)
-	if err != nil {
-		log.Crit("Unable to parse DATABASE_URL", "error", err)
-		os.Exit(1)
-	}
-
-	poolConfig.ConnConfig.Logger = logger
-
-	db, err = pgxpool.ConnectConfig(context.Background(), poolConfig)
-	if err != nil {
-		log.Crit("Unable to create connection pool", "error", err)
-		os.Exit(1)
-	}
 
 	e := echo.New()
 
@@ -81,81 +54,15 @@ func main() {
 
 	articleGroup := e.Group("/article")
 
-	articleGroup.GET("/:id", func(c echo.Context) error {
-		id := c.Param("id")
-		row := db.QueryRow(context.Background(), "SELECT id,content,tags FROM articles WHERE id=$1", id)
-		article := Article{}
-		err = row.Scan(&article.Id, &article.Content, &article.Tags)
-		if err != nil {
-			if err == pgx.ErrNoRows {
-				return echo.NewHTTPError(http.StatusNotFound)
-			} else {
-				return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-			}
-		}
-		return c.JSON(http.StatusOK, article)
-	})
+	articleGroup.GET("/:id", handlers.GetArticleById)
 
-	articleGroup.GET("/", func(c echo.Context) error {
-		tag := c.QueryParam("tag")
-		res, err := db.Query(context.Background(), "SELECT id,content,tags FROM articles WHERE $1=ANY(tags)", tag)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
-		rows := make([]Article, 0)
-		for res.Next() {
-			row := Article{}
-			err = res.Scan(&row.Id, &row.Content, &row.Tags)
-			if err != nil {
-				return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-			}
-			rows = append(rows, row)
-		}
-		if len(rows) == 0 {
-			return echo.NewHTTPError(http.StatusNotFound)
-		}
-		return c.JSON(http.StatusOK, rows)
-	}, setToken)
+	articleGroup.GET("/", handlers.GetArticleByTag, setToken)
 
-	articleGroup.POST("", func(c echo.Context) error {
-		article := &Article{}
-		if err := c.Bind(article); err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-		}
-		_, err = db.Exec(context.Background(), "INSERT INTO articles (content, tags) VALUES ($1, $2)", article.Content, article.Tags)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
-		return c.JSON(http.StatusOK, "OK")
-	})
+	articleGroup.POST("", handlers.CreateNewArticle)
 
-	articleGroup.PUT("/:id", func(c echo.Context) error {
-		article := &Article{}
-		id := c.Param("id")
-		if err := c.Bind(article); err != nil {
-			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-		}
-		commandTag, err := db.Exec(context.Background(), "UPDATE articles SET content=$1, tags=$2 WHERE id=$3", article.Content, article.Tags, id)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
-		if commandTag.RowsAffected() == 0 {
-			return echo.NewHTTPError(http.StatusNotFound)
-		}
-		return c.JSON(http.StatusOK, "OK")
-	})
+	articleGroup.PUT("/:id", handlers.UpdateArticle)
 
-	articleGroup.DELETE("/:id", func(c echo.Context) error {
-		id := c.Param("id")
-		commandTag, err := db.Exec(context.Background(), "DELETE FROM articles WHERE id=$1", id)
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
-		if commandTag.RowsAffected() == 0 {
-			return echo.NewHTTPError(http.StatusNotFound)
-		}
-		return c.String(http.StatusOK, "OK")
-	})
+	articleGroup.DELETE("/:id", handlers.DeleteArticle)
 
 	e.Logger.Fatal(e.Start(":1323"))
 
