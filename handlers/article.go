@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v4"
 	"github.com/labstack/echo/v4"
 	"net/http"
+	"strconv"
 )
 
 func GetArticleById(c echo.Context) error {
@@ -53,11 +54,13 @@ func CreateNewArticle(c echo.Context) error {
 	if article.Content == "" {
 		return c.String(http.StatusBadRequest, "Content is empty")
 	}
-	_, err := db.DB.Exec(context.Background(), "INSERT INTO articles (content, tags) VALUES ($1, $2)", article.Content, article.Tags)
+	row := db.DB.QueryRow(context.Background(), "INSERT INTO articles (content, tags) VALUES ($1, $2) RETURNING id", article.Content, article.Tags)
+	var id int
+	err := row.Scan(&id)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
-	return c.String(http.StatusCreated, "OK")
+	return c.String(http.StatusCreated, strconv.Itoa(id))
 }
 
 func UpdateArticle(c echo.Context) error {
@@ -65,6 +68,12 @@ func UpdateArticle(c echo.Context) error {
 	id := c.Param("id")
 	if err := c.Bind(article); err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
+	}
+	if article.Content == "" {
+		return c.String(http.StatusBadRequest, "Content is empty")
+	}
+	if article.Tags == nil {
+		return c.String(http.StatusBadRequest, "Tags is empty")
 	}
 	commandTag, err := db.DB.Exec(context.Background(), "UPDATE articles SET content=$1, tags=$2 WHERE id=$3", article.Content, article.Tags, id)
 	if err != nil {
