@@ -60,7 +60,30 @@ func GetArticleById(c echo.Context) error {
 
 func GetArticlesByTag(c echo.Context) error {
 	tag := c.QueryParam("tag")
-	res, err := db.DB.Query(context.Background(), "SELECT id,content,tags FROM articles WHERE $1=ANY(tags)", tag)
+	if tag == "" {
+		return c.String(http.StatusBadRequest, "Parameter tag is empty")
+	}
+	var offset uint64 = 0
+	var limit uint64 = 10
+	offsetStr := c.QueryParam("offset")
+	var err error
+
+	if offsetStr != "" {
+		offset, err = strconv.ParseUint(offsetStr, 10, 64)
+		if err != nil {
+			return c.String(http.StatusBadRequest, "Parameter offset is not number")
+		}
+	}
+
+	limitStr := c.QueryParam("limit")
+	if limitStr != "" {
+		limit, err = strconv.ParseUint(limitStr, 10, 64)
+		if err != nil {
+			return c.String(http.StatusBadRequest, "Parameter offset is not number")
+		}
+	}
+
+	res, err := db.DB.Query(context.Background(), "SELECT id,content,tags FROM articles WHERE $1=ANY(tags) LIMIT $2 OFFSET $3", tag, limit, offset)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
