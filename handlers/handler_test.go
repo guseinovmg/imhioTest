@@ -27,7 +27,6 @@ func TestCreateNewArticle(t *testing.T) {
 		assert.Equal(t, http.StatusCreated, rec.Code)
 	}
 	idStr = rec.Body.String()
-	//fmt.Println("idStr", idStr)
 	_, err := strconv.ParseUint(idStr, 10, 64)
 	if err != nil {
 		t.Error("id must be number")
