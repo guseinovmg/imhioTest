@@ -17,14 +17,12 @@ var updatedArticleJSON = `{"content":"new text","tags":["New tag", "Super tag"]}
 var idStr string
 
 func TestCreateNewArticle(t *testing.T) {
-	// Setup
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodPost, "/article", strings.NewReader(articleJSON))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
 	rec := httptest.NewRecorder()
 	c := e.NewContext(req, rec)
 
-	//Assertions
 	if assert.NoError(t, CreateNewArticle(c)) {
 		assert.Equal(t, http.StatusCreated, rec.Code)
 	}
@@ -41,14 +39,12 @@ func TestCreateNewArticle(t *testing.T) {
 	rec = httptest.NewRecorder()
 	c = e.NewContext(req, rec)
 
-	// Assertions
 	if assert.NoError(t, CreateNewArticle(c)) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	}
 }
 
 func TestUpdateArticle(t *testing.T) {
-	// Setup
 	e := echo.New()
 	req := httptest.NewRequest(http.MethodPut, "/article/", strings.NewReader(updatedArticleJSON))
 	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
@@ -56,7 +52,7 @@ func TestUpdateArticle(t *testing.T) {
 	c := e.NewContext(req, rec)
 	c.SetParamNames("id")
 	c.SetParamValues(idStr)
-	//Assertions
+
 	if assert.NoError(t, UpdateArticle(c)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
 		assert.Equal(t, "OK", rec.Body.String())
@@ -69,9 +65,53 @@ func TestUpdateArticle(t *testing.T) {
 	c = e.NewContext(req, rec)
 	c.SetParamNames("id")
 	c.SetParamValues(idStr)
-	// Assertions
+
 	if assert.NoError(t, UpdateArticle(c)) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 		assert.NotEqual(t, "OK", rec.Body.String())
+	}
+}
+
+func TestGetArticleById(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/article/", nil)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("id")
+	c.SetParamValues(idStr)
+
+	if assert.NoError(t, GetArticleById(c)) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		assert.Equal(t, `{"id":`+idStr+`,"content":"new text","tags":["New tag","Super tag"]}`+"\n", rec.Body.String())
+	}
+}
+
+func TestGetArticlesByTag(t *testing.T) {
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodGet, "/article?tag=Super%20tag", nil)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+
+	if assert.NoError(t, GetArticlesByTag(c)) {
+		assert.Equal(t, http.StatusOK, rec.Code)
+		//assert.Equal(t, `[{"id":`+idStr+`,"content":"new text","tags":["New tag","Super tag"]}]`+"\n", rec.Body.String())
+	}
+}
+
+func TestDeleteArticle(t *testing.T) {
+	// Setup
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodDelete, "/article", nil)
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetParamNames("id")
+	c.SetParamValues(idStr)
+
+	//Assertions
+	if assert.NoError(t, DeleteArticle(c)) {
+		assert.Equal(t, http.StatusOK, rec.Code)
 	}
 }

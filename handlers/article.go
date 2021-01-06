@@ -2,13 +2,46 @@ package handlers
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"github.com/guseinovmg/imhioTest/db"
 	"github.com/guseinovmg/imhioTest/models"
 	"github.com/jackc/pgx/v4"
 	"github.com/labstack/echo/v4"
 	"net/http"
 	"strconv"
+	"time"
 )
+
+func SetTokenAndCounter(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		cookie, err := c.Cookie("token")
+		if err != nil {
+			cookie = new(http.Cookie)
+			cookie.Name = "token"
+			uuidValue := uuid.New()
+			cookie.Value = uuidValue.String()
+			cookie.Expires = time.Now().Add(time.Minute)
+			c.SetCookie(cookie)
+
+			cookie = new(http.Cookie)
+			cookie.Name = "counter"
+			cookie.Value = "1"
+			c.SetCookie(cookie)
+		} else {
+			cookie, err = c.Cookie("counter")
+			if err != nil {
+				return err
+			}
+			num, err := strconv.Atoi(cookie.Value)
+			if err != nil {
+				return err
+			}
+			cookie.Value = strconv.Itoa(num + 1)
+			c.SetCookie(cookie)
+		}
+		return next(c)
+	}
+}
 
 func GetArticleById(c echo.Context) error {
 	id := c.Param("id")
