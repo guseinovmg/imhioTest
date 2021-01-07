@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"encoding/json"
+	"github.com/guseinovmg/imhioTest/models"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -82,7 +84,9 @@ func TestGetArticleById(t *testing.T) {
 
 	if assert.NoError(t, GetArticleById(c)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		assert.Equal(t, `{"id":`+idStr+`,"content":"new text","tags":["New tag","Super tag"]}`+"\n", rec.Body.String())
+		var article models.Article
+		assert.NoError(t, json.Unmarshal([]byte(rec.Body.String()), &article))
+		assert.Equal(t, idStr, strconv.FormatUint(article.Id, 10))
 	}
 }
 
@@ -95,7 +99,8 @@ func TestGetArticlesByTag(t *testing.T) {
 
 	if assert.NoError(t, GetArticlesByTag(c)) {
 		assert.Equal(t, http.StatusOK, rec.Code)
-		//assert.Equal(t, `[{"id":`+idStr+`,"content":"new text","tags":["New tag","Super tag"]}]`+"\n", rec.Body.String())
+		var articles []models.Article
+		assert.NoError(t, json.Unmarshal([]byte(rec.Body.String()), &articles))
 	}
 }
 
