@@ -20,7 +20,7 @@ func main() {
 
 	articleGroup := e.Group("/article")
 
-	articleGroup.GET("/:id", handlers.GetArticleById)
+	articleGroup.GET("/:id", handlers.GetArticleById, handlers.SetTokenAndCounter)
 
 	articleGroup.GET("", handlers.GetArticlesByTag, handlers.SetTokenAndCounter)
 
