@@ -83,7 +83,7 @@ func GetArticlesByTag(c echo.Context) error {
 		}
 	}
 
-	res, err := db.DB.Query(context.Background(), "SELECT id,content,tags,updated_at FROM articles WHERE $1=ANY(tags) LIMIT $2 OFFSET $3", tag, limit, offset)
+	res, err := db.DB.Query(context.Background(), "SELECT id,content,tags,updated_at FROM articles WHERE ARRAY[$1] <@ tags LIMIT $2 OFFSET $3", tag, limit, offset)
 	if err != nil {
 		return c.String(http.StatusInternalServerError, err.Error())
 	}
